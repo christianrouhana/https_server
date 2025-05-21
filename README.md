@@ -32,7 +32,9 @@ With docker fully setup on your system:
    docker-compose up
    ```
 
-To shut down, open a second terminal and enter:
+Navigate to https://localhost:443/ to see results. 
+
+To shut it down down, open a second terminal and enter:
    ```sh
    docker-compose down
    ```  
