@@ -1,0 +1,8 @@
+services:
+  https_server:
+    build: .
+    volumes:
+      - .:/https_server
+    ports:
+      - "443:443"
+    command: "./HttpsWSL"
