@@ -10,7 +10,7 @@ Created HttpClient coding along with this [article](https://osasazamegbe.medium.
     *Docker
     *WSL2
 
-### Building and Running (Linx/WSL2)
+### Building and Running (Linux/WSL2)
 
 With docker fully setup on your system:
 
