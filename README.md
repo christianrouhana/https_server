@@ -17,7 +17,7 @@ With docker fully setup on your system:
 1. Clone the repo and navigate to the directory
 2. Install OpenSSL
    ```sh
-   apt-get install -y build-essential libssl-dev openssl
+   apt-get install -y libssl-dev openssl
    ```
 3. Generate a .crt and .key file using OpenSSL 
    ```sh
