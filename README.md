@@ -1,6 +1,6 @@
 # https_server
 
-Created HttpClient coding along with this [article](https://osasazamegbe.medium.com/showing-building-an-http-server-from-scratch-in-c-2da7c0db6cb7) by Osamudiamen Azamegbe. Modified it to use HTTPS/TLS as my first addition. Currently WIP
+Created a simple HTTP server coding along with this [article](https://osasazamegbe.medium.com/showing-building-an-http-server-from-scratch-in-c-2da7c0db6cb7) by Osamudiamen Azamegbe. Modified it to use HTTPS/TLS as my first addition. Currently WIP
 
 ### Original Repo
 [See Osamudiamen's Git Repo here](https://github.com/OsasAzamegbe/http-server/tree/main)
