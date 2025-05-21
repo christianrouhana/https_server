@@ -15,11 +15,19 @@ Created HttpClient coding along with this [article](https://osasazamegbe.medium.
 With docker fully setup on your system:
 
 1. Clone the repo and navigate to the directory
-2. Build the docker image
+2. Install OpenSSL
+   ```sh
+   apt-get install -y build-essential libssl-dev openssl
+   ```
+3. Generate a .crt and .key file using OpenSSL 
+   ```sh
+   openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout server.key -out server.crt
+   ```
+4. Build the docker image
    ```sh
    docker-compose build
    ```
-4. Start the server
+5. Start the server
    ```sh
    docker-compose up
    ```
