@@ -1,5 +1,5 @@
-#ifndef INCLUDED_HTTPS_TLSSERVER_WSL
-#define INCLUDED_HTTPS_TLSSERVER_WSL
+#ifndef INCLUDED_HTTPS_TLSSERVER
+#define INCLUDED_HTTPS_TLSSERVER
 
 #include <stdio.h>
 #include <sys/socket.h>
@@ -9,7 +9,7 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
-namespace http 
+namespace https
 {
     class TcpServer
     {
@@ -38,6 +38,6 @@ namespace http
             void sendResponse();
 
     };
-} // namespace http
+} // namespace https
 
 #endif

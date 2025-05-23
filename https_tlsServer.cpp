@@ -1,4 +1,4 @@
-#include "https_tlsServer_wsl.h"
+#include "https_tlsServer.h"
 
 #include <iostream>
 #include <sstream>
@@ -18,7 +18,7 @@ namespace {
         exit(1);
     }
 }
-namespace http
+namespace https
 {
     TcpServer::TcpServer(std::string ip_address, int port) : m_ip_address(ip_address), m_port(port), m_socket(),
                                                              m_new_socket(), m_incomingMessage(), m_socketAddress(),
@@ -167,4 +167,4 @@ namespace http
         }
         
     }
-} // namespace http
+} // namespace https

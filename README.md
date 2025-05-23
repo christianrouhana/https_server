@@ -2,6 +2,12 @@
 
 Created a simple HTTP server coding along with this [article](https://osasazamegbe.medium.com/showing-building-an-http-server-from-scratch-in-c-2da7c0db6cb7) by Osamudiamen Azamegbe. Modified it to use HTTPS/TLS as my first addition. Currently WIP
 
+5/23/2025
+- Added a file to handle a client that automatically sends a request to the server. Runs simultaneously with the server
+
+### Next Steps
+- Add terminal interface to client, send text to server and see it replicated in the server output.
+
 ### Original Repo
 [See Osamudiamen's Git Repo here](https://github.com/OsasAzamegbe/http-server/tree/main)
 

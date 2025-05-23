@@ -7,7 +7,7 @@ COPY . /usr/src/https_server
 WORKDIR /usr/src/https_server
 
 # RUN ls
-RUN g++ -o HttpsWSL server_wsl.cpp https_tlsServer_wsl.cpp -lssl -lcrypto
+RUN g++ -o HttpsWSL server.cpp https_tlsServer.cpp https_client.cpp -lssl -lcrypto -pthread
 
 #change this to whatever port you choose to run your server on
 EXPOSE 443
