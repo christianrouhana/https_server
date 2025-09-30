@@ -1,7 +1,9 @@
 #include "https_tlsServer.h"
 
 #include <iostream>
+#include <map>
 #include <sstream>
+#include <cstdlib>
 #include <unistd.h>
 
 namespace {
@@ -17,13 +19,121 @@ namespace {
         log("ERROR: " + errorMessage);
         exit(1);
     }
+
+    std::string urlDecode(const std::string &value)
+    {
+        std::string output;
+        output.reserve(value.size());
+
+        for (std::size_t i = 0; i < value.size(); ++i)
+        {
+            char ch = value[i];
+            if (ch == '+')
+            {
+                output.push_back(' ');
+            }
+            else if (ch == '%' && i + 2 < value.size())
+            {
+                std::string hex = value.substr(i + 1, 2);
+                char *end = nullptr;
+                int decoded = static_cast<int>(strtol(hex.c_str(), &end, 16));
+                if (end != nullptr && *end == '\0')
+                {
+                    output.push_back(static_cast<char>(decoded));
+                    i += 2;
+                }
+                else
+                {
+                    output.push_back(ch);
+                }
+            }
+            else
+            {
+                output.push_back(ch);
+            }
+        }
+
+        return output;
+    }
+
+    std::map<std::string, std::string> parseQuery(const std::string &queryString)
+    {
+        std::map<std::string, std::string> params;
+        std::size_t start = 0;
+        while (start < queryString.size())
+        {
+            auto end = queryString.find('&', start);
+            if (end == std::string::npos)
+            {
+                end = queryString.size();
+            }
+
+            auto separator = queryString.find('=', start);
+            std::string key;
+            std::string value;
+            if (separator != std::string::npos && separator < end)
+            {
+                key = urlDecode(queryString.substr(start, separator - start));
+                value = urlDecode(queryString.substr(separator + 1, end - separator - 1));
+            }
+            else
+            {
+                key = urlDecode(queryString.substr(start, end - start));
+            }
+
+            if (!key.empty())
+            {
+                params[key] = value;
+            }
+
+            start = end + 1;
+        }
+
+        return params;
+    }
+
+    std::string reasonPhrase(int statusCode)
+    {
+        switch (statusCode)
+        {
+        case 200:
+            return "OK";
+        case 400:
+            return "Bad Request";
+        case 404:
+            return "Not Found";
+        case 405:
+            return "Method Not Allowed";
+        case 500:
+            return "Internal Server Error";
+        default:
+            return "";
+        }
+    }
+
+    std::string buildHttpResponse(int statusCode, const std::string &body, const std::string &contentType)
+    {
+        std::ostringstream response;
+        response << "HTTP/1.1 " << statusCode << ' ' << reasonPhrase(statusCode) << "\r\n";
+        response << "Content-Type: " << contentType << "\r\n";
+        response << "Content-Length: " << body.size() << "\r\n";
+        response << "Connection: close\r\n\r\n";
+        response << body;
+        return response.str();
+    }
 }
 namespace https
 {
-    TcpServer::TcpServer(std::string ip_address, int port) : m_ip_address(ip_address), m_port(port), m_socket(),
-                                                             m_new_socket(), m_incomingMessage(), m_socketAddress(),
-                                                             m_socketAddress_len(sizeof(m_socketAddress)), 
-                                                             m_serverMessage(buildResponse()), m_ssl_ctx(nullptr), m_ssl(nullptr)
+    TcpServer::TcpServer(std::string ip_address, int port, std::string caCertPath) : m_ip_address(std::move(ip_address)),
+                                                                                    m_port(port),
+                                                                                    m_socket(),
+                                                                                    m_new_socket(),
+                                                                                    m_incomingMessage(),
+                                                                                    m_socketAddress(),
+                                                                                    m_socketAddress_len(sizeof(m_socketAddress)),
+                                                                                    m_ssl_ctx(nullptr),
+                                                                                    m_ssl(nullptr),
+                                                                                    m_caCertPath(std::move(caCertPath))
     {
         SSL_library_init();
         SSL_load_error_strings();
@@ -113,19 +223,41 @@ namespace https
 
             char buffer[BUFFER_SIZE] = {0};
             bytesReceived = SSL_read(m_ssl, buffer, BUFFER_SIZE);
-            if (bytesReceived < 0) 
+            if (bytesReceived < 0)
             {
                 exitWithError("Failed to read bytes from client socket connection.");
+            }
+
+            if (bytesReceived == 0)
+            {
+                SSL_shutdown(m_ssl);
+                SSL_free(m_ssl);
+                m_ssl = nullptr;
+                close(m_new_socket);
+                continue;
             }
 
             std::ostringstream ss;
             ss << "----- Received request from client -----\n\n";
             log(ss.str());
 
-            sendResponse();
+            std::string request(buffer, bytesReceived);
+            std::string responsePayload = handleRequest(request);
+
+            long bytesSent = SSL_write(m_ssl, responsePayload.c_str(), responsePayload.size());
+
+            if (bytesSent == static_cast<long>(responsePayload.size()))
+            {
+                log("----- Server Response sent to client -----\n\n");
+            }
+            else
+            {
+                log("Error sending response to client");
+            }
             
             SSL_shutdown(m_ssl);
             SSL_free(m_ssl);
+            m_ssl = nullptr;
             close(m_new_socket);
         }
     }
@@ -141,30 +273,55 @@ namespace https
         }
     }
 
-    std::string TcpServer::buildResponse()
+    std::string TcpServer::handleRequest(const std::string &request)
     {
-        std::string htmlFile = "<!DOCTYPE html><html lang=\"en\"><body><h1> Success </h1><p> Server works. </p></body></html>";
-        std::ostringstream ss;
-        ss << "HTTP/1.1 200 OK\nContent-Type: text/html\nContent-Length: " << htmlFile.size() << "\n\n"
-           << htmlFile;
+        std::istringstream requestStream(request);
+        std::string method;
+        std::string target;
+        std::string version;
+        requestStream >> method >> target >> version;
 
-        return ss.str();
-    }
-
-    void TcpServer::sendResponse()
-    {
-        long bytesSent;
-
-        bytesSent = SSL_write(m_ssl, m_serverMessage.c_str(), m_serverMessage.size());
-
-        if (bytesSent == m_serverMessage.size())
+        if (method.empty())
         {
-            log("----- Server Response sent to client -----\n\n");
+            return buildHttpResponse(400, "{\"error\":\"Malformed request\"}", "application/json");
         }
-        else 
+
+        if (method != "GET")
         {
-            log("Error sending response to client");
+            return buildHttpResponse(405, "{\"error\":\"Only GET supported\"}", "application/json");
         }
-        
+
+        std::string path = target;
+        std::string queryString;
+        auto queryPos = target.find('?');
+        if (queryPos != std::string::npos)
+        {
+            path = target.substr(0, queryPos);
+            queryString = target.substr(queryPos + 1);
+        }
+
+        if (path == "/" || path.empty())
+        {
+            std::string body = "{\"message\":\"OSRS Hiscore service. Use /player?name=Display%20Name\"}";
+            return buildHttpResponse(200, body, "application/json");
+        }
+
+        if (path == "/player")
+        {
+            auto params = parseQuery(queryString);
+            auto nameIt = params.find("name");
+            if (nameIt == params.end() || nameIt->second.empty())
+            {
+                return buildHttpResponse(400, "{\"error\":\"Query parameter 'name' is required\"}", "application/json");
+            }
+
+            const std::string &playerName = nameIt->second;
+            osrs::HiscoreClient client(m_caCertPath);
+            osrs::PlayerSnapshot snapshot = client.fetchPlayer(playerName);
+            std::string body = osrs::ToJson(snapshot);
+            return buildHttpResponse(snapshot.success ? 200 : 502, body, "application/json");
+        }
+
+        return buildHttpResponse(404, "{\"error\":\"Not Found\"}", "application/json");
     }
 } // namespace https

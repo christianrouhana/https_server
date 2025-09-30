@@ -6,6 +6,8 @@
 #include <arpa/inet.h>
 #include <stdlib.h>
 #include <string>
+
+#include "osrs_hiscore.h"
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
@@ -14,7 +16,7 @@ namespace https
     class TcpServer
     {
         public:
-            TcpServer(std::string ip_address, int port);
+            TcpServer(std::string ip_address, int port, std::string caCertPath = "");
             ~TcpServer();
             void startListen();
             
@@ -26,16 +28,16 @@ namespace https
             long m_incomingMessage;
             struct sockaddr_in m_socketAddress;
             unsigned int m_socketAddress_len;
-            std::string m_serverMessage;
 
             SSL_CTX *m_ssl_ctx;
             SSL *m_ssl;
+
+            std::string m_caCertPath;
             
             int startServer();
             void closeServer();
             void acceptConnection(int &new_socket);
-            std::string buildResponse();
-            void sendResponse();
+            std::string handleRequest(const std::string &request);
 
     };
 } // namespace https

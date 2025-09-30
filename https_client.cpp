@@ -51,7 +51,20 @@ namespace https {
         }
 
         m_ssl = SSL_new(m_ctx);
-        SSL_set_fd(m_ssl, m_socket);
+        if (!m_ssl) {
+            std::cerr << "Failed to allocate SSL structure" << std::endl;
+            return false;
+        }
+
+        if (SSL_set_fd(m_ssl, m_socket) != 1) {
+            std::cerr << "Failed to attach socket to SSL context" << std::endl;
+            return false;
+        }
+
+        if (SSL_set_tlsext_host_name(m_ssl, m_hostname.c_str()) != 1) {
+            std::cerr << "Failed to set SNI host name" << std::endl;
+            return false;
+        }
 
         if (SSL_connect(m_ssl) <= 0) {
             ERR_print_errors_fp(stderr);
@@ -88,12 +101,15 @@ namespace https {
         if (m_ssl) {
             SSL_shutdown(m_ssl);
             SSL_free(m_ssl);
+            m_ssl = nullptr;
         }
         if (m_socket != -1) {
             close(m_socket);
+            m_socket = -1;
         }
         if (m_ctx) {
             SSL_CTX_free(m_ctx);
+            m_ctx = nullptr;
         }
         EVP_cleanup();
     }

@@ -1,31 +1,18 @@
 #include "https_tlsServer.h"
-#include "https_client.h"
-#include <thread>
-#include <chrono>
+
+#include <cstdlib>
+#include <iostream>
+#include <string>
 
 int main()
 {
-    using namespace https;    
-    TcpServer server = TcpServer("0.0.0.0", 443);   
-    std::thread serverThread([&server]() {
-        server.startListen();
-    });
+    const char *caEnv = std::getenv("OSRS_CA_BUNDLE");
+    std::string caPath = caEnv ? caEnv : "cacert.pem"; // Replace with path to your CA bundle
 
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    https::TcpServer server("0.0.0.0", 443, caPath);
 
-    HttpsClient client("0.0.0.0", 443, "server.crt");
-    if (client.connectToServer()) {
-        std::string req = "GET / HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n";
-        if (client.sendRequest(req)) {
-            std::string response = client.receiveResponse();
-            std::cout << "Client received:\n" << response << std::endl;
-        } else {
-            std::cerr << "Failed to send request\n";
-        }
-    } else {
-        std::cerr << "Failed to connect to server\n";
-    }
+    std::cout << "Starting HTTPS server for OSRS hiscore proxy..." << std::endl;
+    server.startListen();
 
-    serverThread.join();
     return 0;
 }
